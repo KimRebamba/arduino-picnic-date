@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arduino Picnic Project by Kim</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="desktop">
+  <div class="deco deco-1"></div>
+  <div class="deco deco-2"></div>
+  <div class="deco deco-3"></div>
+  <div class="deco deco-4"></div>
+
+  <aside id="sidebar">
+    <!-- <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg class="icon" viewBox="0 0 20 20"><path d="M10 1C7 6 4 8.5 4 12a6 6 0 0012 0c0-3.5-3-6-6-11z"/></svg>
+      </div>
+      <div class="sidebar-title">Arduino Picnic Project</div>
+      <div class="sidebar-sub">by kim</div>
+    </div> -->
+    <nav class="sidebar-nav">
+      <div class="sidebar-item" id="sb-status" onclick="openStatus()">
+        <div class="sidebar-icon" style="background:var(--accent-coral)">
+          <svg class="icon" viewBox="0 0 20 20"><rect x="7" y="1" width="2" height="4" rx="1"/><rect x="11" y="1" width="2" height="4" rx="1"/><path d="M6 5h8l-1.5 13h-5L6 5z"/></svg>
+        </div>
+        <div class="sidebar-label">Status</div>
+      </div>
+      <div class="sidebar-item" id="sb-reaction" onclick="openReaction()">
+        <div class="sidebar-icon" style="background:#E9C46A">
+          <svg class="icon" viewBox="0 0 20 20"><path d="M11 1L3 11h5L7 19l8-10h-5l1-8z"/></svg>
+        </div>
+        <div class="sidebar-label">Reaction</div>
+      </div>
+      <div class="sidebar-item" id="sb-mash" onclick="openMash()">
+        <div class="sidebar-icon" style="background:var(--accent-pink)">
+          <svg class="icon" viewBox="0 0 20 20"><path d="M6 9V7a1 1 0 012 0v2h1V5a1 1 0 012 0v4h1V4a1 1 0 012 0v5h1V7a1 1 0 012 0v6a4 4 0 01-4 4H9a4 4 0 01-4-4v-3a1 1 0 012 0v1h-1z"/></svg>
+        </div>
+        <div class="sidebar-label">Mash</div>
+      </div>
+      <div class="sidebar-item" id="sb-tow" onclick="openTow()">
+        <div class="sidebar-icon" style="background:var(--accent-green)">
+          <svg class="icon" viewBox="0 0 20 20"><path d="M3 10h14M7 5L2 10l5 5M13 5l5 5-5 5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="sidebar-label">Tug War</div>
+      </div>
+      <div class="sidebar-item" id="sb-flappy" onclick="openFlappy()">
+        <div class="sidebar-icon" style="background:var(--accent-teal)">
+          <svg class="icon" viewBox="0 0 20 20"><path d="M4 13c0-3.5 2.5-6 5.5-6 1.2 0 2.2.4 2.8 1.2L15 6l1 2.5c1.8 1 3 3 3 5 0 2.8-2.2 4.5-5 4.5H7.5c-3 0-5.5-2-5.5-4.5 0-1.2.7-2 2-2.5z"/><circle cx="8.5" cy="11" r="0.9" fill="#FFFAF5"/></svg>
+        </div>
+        <div class="sidebar-label">Flappy</div>
+      </div>
+    </nav>
+    <!-- <div class="sidebar-bottom">
+      Keyboard<br>
+      <kbd>Space</kbd> Btn 1<br>
+      <kbd>Enter</kbd> Btn 2
+    </div> -->
+  </aside>
+
+  <main id="windows-area">
+    <div class="empty-hint" id="empty-hint">
+      <svg class="icon" viewBox="0 0 20 20" style="font-size:36px"><path d="M11 6V2a1 1 0 012 0v5h1V3a1 1 0 012 0v5h1V5a1 1 0 012 0v7a5 5 0 01-5 5H9a5 5 0 01-5-5v-4a1 1 0 012 0v2h1V9a1 1 0 012 0v1h1V7a1 1 0 011 0v-1z"/></svg>
+      <div>Click an icon to get started</div>
+    </div>
+  </main>
+</div>
+
+<div class="error-popup" id="error-popup" style="display:none">
+  <div class="error-icon">
+    <svg class="icon" viewBox="0 0 20 20"><path d="M10 2L1 18h18L10 2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v0.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </div>
+  <div class="error-title" id="error-title">ERROR</div>
+  <div class="error-msg" id="error-msg">Something went wrong.</div>
+  <button class="error-ok" onclick="document.getElementById('error-popup').style.display='none'">OK</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
