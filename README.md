@@ -1,10 +1,8 @@
-# Arduino Picnic Project by Kim
+# 📟 Arduino Picnic Project by Kim
 
 A fully offline, interactive ESP32 project designed like a picnic date. It features LED candles, a web interface, and 5 mini-games you can play with buttons.
 
 ![ESP32](https://img.shields.io/badge/Board-ESP32-000000?logo=espressif)
-![Offline](https://img.shields.io/badge/100%25_Offline-Ready-brightgreen)
-![1v1 Games](https://img.shields.io/badge/Games-1P%20%7C%201v1-orange)
 ![Made with Love](https://img.shields.io/badge/Made%20with-LEDs%20%26%20Code-red)
 
 ![Image 1](./assets/1.jpg)
@@ -32,7 +30,7 @@ It's a good way of surprising your loved ones by showing your nerdy skills off b
 - **🎮 5 Built-in Games:** Reaction Time, Button Mash, Tug of War, and a Flappy Bird clone.
 - **👥 1v1 Mode:** Mash, Tug of War, and Reaction all have 1v1 modes. Player 1 uses Button 1, Player 2 uses Button 2.
 
-![Video Demo](./assets/vid1.mp4)
+![Video Demo](./assets/1.gif)
 ![Website Demo GIF](./assets/2.gif)
 
 ---
