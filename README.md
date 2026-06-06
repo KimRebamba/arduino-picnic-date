@@ -49,8 +49,6 @@ It's a good way of surprising your loved ones by showing your nerdy skills off b
 
 ![Materials Picture](./assets/mat1.jpg)
 
-*(Buttons use internal pull-ups, so just wire them straight to GND. Don't forget resistors for your LEDs)*
-
 ---
 
 ## Software & Dependencies
