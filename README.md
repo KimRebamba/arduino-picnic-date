@@ -23,12 +23,12 @@ It's a good way of surprising your loved ones by showing your nerdy skills off b
 
 ## Features
 
-- **🕯️ LED Candles:** added a flickering effect.
-- **🎛️ Analog Brightness:** Turn the potentiometer to dim or brighten the candles.
-- **🖥️ Desktop UI:** A web interface styled like a cartoon operating system (draggable windows, macOS dots, warm pastel).
-- **📡 Dual Connection:** Connect over the ESP32's WiFi hotspot OR plug it in via USB. 
-- **🎮 5 Built-in Games:** Reaction Time, Button Mash, Tug of War, and a Flappy Bird clone.
-- **👥 1v1 Mode:** Mash, Tug of War, and Reaction all have 1v1 modes. Player 1 uses Button 1, Player 2 uses Button 2.
+- **LED Candles:** added a flickering effect.
+- **Analog Brightness:** Turn the potentiometer to dim or brighten the candles.
+- **Desktop UI:** A web interface styled like a cartoon operating system (draggable windows, macOS dots, warm pastel).
+- **Dual Connection:** Connect over the ESP32's WiFi hotspot OR plug it in via USB. 
+- **5 Built-in Games:** Reaction Time, Button Mash, Tug of War, and a Flappy Bird clone.
+- **1v1 Mode:** Mash, Tug of War, and Reaction all have 1v1 modes. Player 1 uses Button 1, Player 2 uses Button 2.
 
 ![Video Demo](./assets/1.gif)
 ![Website Demo GIF](./assets/2.gif)
