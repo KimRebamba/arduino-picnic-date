@@ -3,7 +3,7 @@ function vmap(v, a, b, c, d) { return (v - a) * (d - c) / (b - a) + c; }
 var transportType = null;
 var port = null, reader = null, serialBuffer = '';
 var ws = null;
-var potValue = 0, pot2Value = 0, lastBtnText = '--';
+var potValue = 0, lastBtnText = '--';
 
 function sendCmd(c) {
   if (transportType === 'wifi' && ws && ws.readyState === 1) { ws.send(c); }
@@ -18,8 +18,7 @@ function serialSend(c) {
 function onIncoming(msg) {
   if (msg === 'BUTTON_1') { routeButton(1); setLastBtn('Button 1'); }
   else if (msg === 'BUTTON_2') { routeButton(2); setLastBtn('Button 2'); }
-  else if (msg === 'POT:' || msg.startsWith('POT:')) { setPotVal(parseInt(msg.substring(4))); }
-  else if (msg.startsWith('POT2:')) { setPot2Val(parseInt(msg.substring(5))); }
+  else if (msg.startsWith('POT:')) { setPotVal(parseInt(msg.substring(4))); }
 }
 
 function toggleWifi() { if (transportType === 'wifi') wsDisconnect(); else wsConnect(); }
@@ -78,7 +77,6 @@ function showError(t, m) {
 }
 
 function setPotVal(v) { potValue = v; updateStatusUI(); }
-function setPot2Val(v) { pot2Value = v; }
 function setLastBtn(t) { lastBtnText = t; updateStatusUI(); }
 
 var zIndex = 100, openWins = {}, activeGameId = null, gameHandlers = {}, globalTimers = [];
@@ -108,14 +106,13 @@ function openWindow(id, title, w, h, fn) {
 
 function closeWindow(id) {
   if (!openWins[id]) return;
-  var gids = ['reaction', 'mash', 'tow', 'archery', 'flappy'];
+  var gids = ['reaction', 'mash', 'tow', 'flappy'];
   if (gids.indexOf(id) >= 0 && activeGameId === id) {
     activeGameId = null; delete gameHandlers[id];
     sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE');
     if (id === 'reaction') destroyReaction();
     if (id === 'mash') destroyMash();
     if (id === 'tow') destroyTow();
-    if (id === 'archery') destroyArchery();
     if (id === 'flappy') destroyFlappy();
   }
   openWins[id].remove(); delete openWins[id]; setActiveSB(null);
@@ -152,7 +149,7 @@ document.addEventListener('keydown', function (e) {
 });
 
 function closeOtherGames(keep) {
-  var ids = ['reaction', 'mash', 'tow', 'archery', 'flappy'];
+  var ids = ['reaction', 'mash', 'tow', 'flappy'];
   for (var i = 0; i < ids.length; i++) { if (ids[i] !== keep && openWins[ids[i]]) closeWindow(ids[i]); }
 }
 
@@ -392,7 +389,8 @@ var twState = 'idle', twMode = '1p', twPos = 50, twTimer = 15, twInterval = null
 function openTow() {
   closeOtherGames('tow'); activeGameId = 'tow';
   openWindow('tow', 'Tug of War', 460, 400, function (body) {
-    body.style.overflow = 'hidden'; body.style.padding = '12px';
+    body.style.overflow='hidden';
+    body.style.padding='12px';
     twBuildUI(body);
     gameHandlers['tow'] = { b1: function () { twPress(1); }, b2: function () { twPress(2); } };
   });
@@ -409,7 +407,7 @@ function twBuildUI(body) {
   if (twMode === '1v1') h += '<div class="wins-row"><span class="wp1">P1: ' + twWins[0] + '</span> | <span class="wp2">P2: ' + twWins[1] + '</span></div>';
   body.innerHTML = h;
   twCanvas = document.getElementById('tw-canvas'); twCtx = twCanvas.getContext('2d');
-  twCanvas.width = 428; twCanvas.height = 200; drawTow();
+  twCanvas.width = twCanvas.parentElement.clientWidth; twCanvas.height = 200; drawTow();
 }
 
 function twStartGame() {
@@ -494,183 +492,6 @@ function twBuildWR() { var e = document.querySelector('#body-tow .wins-row'); if
 function twReset() { twState = 'idle'; twPos = 50; twBuildUI(); }
 function destroyTow() { if (twInterval) { clearInterval(twInterval); twInterval = null; } if (twAF) { cancelAnimationFrame(twAF); twAF = null; } twState = 'idle'; }
 
-// ========== ARCHERY ==========
-var awState = 'idle', awP1Angle = 0, awP2Angle = 0;
-var awP1Arrow = null, awP2Arrow = null;
-var awP1Cooldown = 0, awP2Cooldown = 0;
-var awWinner = 0, awAF = null, awCanvas, awCtx;
-var awWins = [0, 0];
-
-//tweak 
-var AW_SPEED = 10.2, AW_GRAV = 0.42, AW_GRAV_VAR = 0.135, AW_HIT_R = 36;
-
-function openArchery() {
-  closeOtherGames('archery'); activeGameId = 'archery';
-  openWindow('archery', 'Archery Duel', 540, 540, function (body) {
-    body.style.overflow = 'hidden'; body.style.padding = '10px';
-    awBuildUI(body);
-    gameHandlers['archery'] = { b1: function () { awShoot(1); }, b2: function () { awShoot(2); } };
-  });
-}
-
-function awBuildUI(body) {
-  if (!body) body = document.getElementById('body-archery'); if (!body) return;
-  var h = '<div class="archery-canvas-wrap"><canvas id="aw-canvas" width="520" height="350"></canvas></div>';
-  h += '<button class="game-btn" id="aw-btn" onclick="awStartGame()">Start</button>';
-  h += '<div class="game-sub" style="margin-top:6px">P1: Pot1 aim, Btn1 shoot &middot; P2: Pot2 aim, Btn2 shoot<br>Arc it to hit the other!</div>';
-  h += '<div class="wins-row"><span class="wp1">P1: ' + awWins[0] + '</span> | <span class="wp2">P2: ' + awWins[1] + '</span></div>';
-  body.innerHTML = h;
-  awCanvas = document.getElementById('aw-canvas'); awCtx = awCanvas.getContext('2d');
-  awP1Angle = vmap(potValue, 0, 4095, 5 * Math.PI / 180, 80 * Math.PI / 180);
-  awP2Angle = vmap(pot2Value, 0, 4095, 5 * Math.PI / 180, 80 * Math.PI / 180);
-  drawArchery();
-}
-
-function awStartGame() {
-  if (awState !== 'idle') return;
-  awState = 'playing'; awP1Arrow = null; awP2Arrow = null;
-  awP1Cooldown = 0; awP2Cooldown = 0; awWinner = 0;
-  sendCmd('MODE:GAME');
-  var btn = document.getElementById('aw-btn'); if (btn) btn.disabled = true;
-  awLoop();
-}
-
-function awShoot(player) {
-  if (awState !== 'playing') return;
-  if (player === 1 && (awP1Cooldown > 0 || awP1Arrow)) return;
-  if (player === 2 && (awP2Cooldown > 0 || awP2Arrow)) return;
-  var angle, speed, sx, sy, vx, vy, grav, px;
-  speed = AW_SPEED + (Math.random() - 0.5) * 3.0;
-  grav = AW_GRAV + (Math.random() - 0.5) * AW_GRAV_VAR * 2;
-  if (player === 1) {
-    angle = awP1Angle; px = 70;
-    sx = px + Math.cos(angle) * 35; sy = 260 - Math.sin(angle) * 35;
-    vx = speed * Math.cos(angle); vy = -speed * Math.sin(angle);
-    awP1Arrow = { x: sx, y: sy, vx: vx, vy: vy, grav: grav };
-  } else {
-    angle = awP2Angle; px = 450;
-    sx = px - Math.cos(angle) * 35; sy = 260 - Math.sin(angle) * 35;
-    vx = -speed * Math.cos(angle); vy = -speed * Math.sin(angle);
-    awP2Arrow = { x: sx, y: sy, vx: vx, vy: vy, grav: grav };
-  }
-  sendCmd('LED' + player + ':ON');
-  addTimeout(function () { sendCmd('LED' + player + ':OFF'); }, 80);
-}
-
-function awLoop() {
-  if (awState !== 'playing') return;
-  awP1Angle = vmap(potValue, 0, 4095, 5 * Math.PI / 180, 80 * Math.PI / 180);
-  awP2Angle = vmap(pot2Value, 0, 4095, 5 * Math.PI / 180, 80 * Math.PI / 180);
-  if (awP1Cooldown > 0) awP1Cooldown--;
-  if (awP2Cooldown > 0) awP2Cooldown--;
-  var groundY = 310;
-  if (awP1Arrow) {
-    awP1Arrow.x += awP1Arrow.vx; awP1Arrow.y += awP1Arrow.vy; awP1Arrow.vy += awP1Arrow.grav;
-    if (awP1Arrow.y > groundY || awP1Arrow.x > 560) {
-      awP1Arrow = null; awP1Cooldown = 90;
-    } else {
-      var dx = awP1Arrow.x - 450, dy = awP1Arrow.y - 278;
-      if (Math.sqrt(dx * dx + dy * dy) < AW_HIT_R) {
-        awState = 'won'; awWinner = 1; awWins[0]++;
-        sendCmd('LED1:ON'); addTimeout(function () { sendCmd('LED1:OFF'); }, 500);
-        sendCmd('MODE:CANDLE'); awBuildWR();
-      }
-    }
-  }
-  if (awP2Arrow) {
-    awP2Arrow.x += awP2Arrow.vx; awP2Arrow.y += awP2Arrow.vy; awP2Arrow.vy += awP2Arrow.grav;
-    if (awP2Arrow.y > groundY || awP2Arrow.x < -40) {
-      awP2Arrow = null; awP2Cooldown = 90;
-    } else {
-      var dx = awP2Arrow.x - 70, dy = awP2Arrow.y - 278;
-      if (Math.sqrt(dx * dx + dy * dy) < AW_HIT_R) {
-        awState = 'won'; awWinner = 2; awWins[1]++;
-        sendCmd('LED2:ON'); addTimeout(function () { sendCmd('LED2:OFF'); }, 500);
-        sendCmd('MODE:CANDLE'); awBuildWR();
-      }
-    }
-  }
-  if (awState === 'won') { drawArchery(); addTimeout(awReset, 3500); return; }
-  drawArchery(); awAF = requestAnimationFrame(awLoop);
-}
-
-function drawArchery() {
-  var c = awCtx, w = awCanvas.width, h = awCanvas.height;
-  var groundY = 310;
-  var sky = c.createLinearGradient(0, 0, 0, groundY);
-  sky.addColorStop(0, '#FFF5E6'); sky.addColorStop(1, '#E8F5E9');
-  c.fillStyle = sky; c.fillRect(0, 0, w, groundY);
-  c.fillStyle = '#81B29A'; c.fillRect(0, groundY, w, h - groundY);
-  c.fillStyle = '#6A9B83'; c.fillRect(0, groundY, w, 3);
-  for (var i = 0; i < 8; i++) {
-    c.strokeStyle = 'rgba(106,155,131,0.4)'; c.lineWidth =
-    2; c.beginPath(); c.moveTo(i * 70 + 10, groundY); c.quadraticCurveTo(i * 70 + 35, groundY - 8, i * 70 + 60, groundY); c.stroke();
-  }
-  // draw faint target zones to help judge aim/hits
-  c.save();
-  c.fillStyle = 'rgba(196,89,63,0.06)';
-  c.beginPath(); c.arc(450, 278, AW_HIT_R, 0, Math.PI * 2); c.fill();
-  c.fillStyle = 'rgba(129,178,154,0.06)';
-  c.beginPath(); c.arc(70, 278, AW_HIT_R, 0, Math.PI * 2); c.fill();
-  c.restore();
-  awDrawStickman(c, 70, groundY, awP1Angle, 1, awP1Cooldown > 0 || awP1Arrow);
-  awDrawStickman(c, 450, groundY, awP2Angle, -1, awP2Cooldown > 0 || awP2Arrow);
-  if (awP1Arrow) awDrawArrow(c, awP1Arrow);
-  if (awP2Arrow) awDrawArrow(c, awP2Arrow);
-  c.fillStyle = '#3D405B'; c.font = 'bold 14px Quicksand'; c.textAlign = 'center';
-  c.fillText('P1', 70, groundY + 25);
-  c.fillText('P2', 450, groundY + 25);
-  if (awState === 'won') {
-    c.fillStyle = 'rgba(255,250,245,0.82)'; c.fillRect(0, 0, w, h);
-    c.fillStyle = awWinner === 1 ? '#81B29A' : '#E07A5F';
-    c.font = 'bold 30px Quicksand'; c.textAlign = 'center';
-    c.fillText(pN(awWinner) + ' Wins!', w / 2, h / 2);
-  }
-}
-
-function awDrawStickman(c, px, gy, angle, dir, busy) {
-  var headY = gy - 32;
-  c.strokeStyle = '#3D405B'; c.lineWidth = 2.5; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(px, gy - 12); c.lineTo(px - 10, gy); c.stroke();
-  c.beginPath(); c.moveTo(px, gy - 12); c.lineTo(px + 10, gy); c.stroke();
-  c.beginPath(); c.moveTo(px, gy - 12); c.lineTo(px, gy - 28); c.stroke();
-  c.fillStyle = '#FFFAF5'; c.beginPath(); c.arc(px, headY, 7, 0, Math.PI * 2); c.fill(); c.stroke();
-  var sX = px, sY = gy - 24;
-  c.beginPath(); c.moveTo(sX, sY); c.lineTo(sX - dir * 12, sY + 8); c.stroke();
-  var bX = sX + dir * 20, bY = sY - 5;
-  c.beginPath(); c.moveTo(sX, sY); c.lineTo(bX, bY); c.stroke();
-  c.strokeStyle = '#A68656'; c.lineWidth = 3;
-  c.beginPath(); c.ellipse(bX, bY, 4, 16, 0, -Math.PI / 2, Math.PI / 2, dir < 0); c.stroke();
-  var stY1 = bY - 16, stY2 = bY + 16;
-  c.strokeStyle = '#3D405B'; c.lineWidth = 1.2;
-  c.beginPath(); c.moveTo(bX, stY1); c.lineTo(bX, stY2); c.stroke();
-  if (!busy) {
-    c.save(); c.translate(bX, bY);     c.rotate(dir * -angle);
-    c.strokeStyle = '#C4593F'; c.lineWidth = 2.5;
-    c.beginPath(); c.moveTo(0, 0); c.lineTo(25 * dir, 0); c.stroke();
-    c.fillStyle = '#C4593F';
-    c.beginPath(); c.moveTo(25 * dir, 0); c.lineTo(20 * dir, -4); c.lineTo(20 * dir, 4); c.closePath(); c.fill();
-    c.restore();
-  }
-}
-
-function awDrawArrow(c, arrow) {
-  var ang = Math.atan2(arrow.vy, arrow.vx);
-  c.save(); c.translate(arrow.x, arrow.y); c.rotate(ang);
-  c.strokeStyle = '#C4593F'; c.lineWidth = 2.5; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-12, 0); c.lineTo(8, 0); c.stroke();
-  c.fillStyle = '#C4593F';
-  c.beginPath(); c.moveTo(10, 0); c.lineTo(4, -3); c.lineTo(4, 3); c.closePath(); c.fill();
-  c.strokeStyle = '#E07A5F'; c.lineWidth = 1;
-  c.beginPath(); c.moveTo(-12, -3); c.lineTo(-8, 0); c.stroke();
-  c.beginPath(); c.moveTo(-12, 3); c.lineTo(-8, 0); c.stroke();
-  c.restore();
-}
-
-function awBuildWR() { var e = document.querySelector('#body-archery .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + awWins[0] + '</span> | <span class="wp2">P2: ' + awWins[1] + '</span></span>'; }
-function awReset() { awState = 'idle'; awWinner = 0; awP1Arrow = null; awP2Arrow = null; awP1Cooldown = 0; awP2Cooldown = 0; awAF = null; awBuildUI(); }
-function destroyArchery() { if (awAF) { cancelAnimationFrame(awAF); awAF = null; } awState = 'idle'; awWinner = 0; awP1Arrow = null; awP2Arrow = null; awP1Cooldown = 0; awP2Cooldown = 0; }
-
 // ========== FLAPPY ==========
 var fbState = 'idle', fbBird, fbPipes, fbScore, fbBest = 0, fbAF = null, fbCanvas, fbCtx, fbPipeTimer;
 var FBG = 0.38, FBF = -6.5, FBS = 2.2, FBGAP = 120, FBPW = 42, FBI = 95;
@@ -679,7 +500,7 @@ function openFlappy() {
   closeOtherGames('flappy'); activeGameId = 'flappy';
   openWindow('flappy', 'Flappy Bird', 360, 440, function (body) {
     body.style.padding = '8px'; body.style.display = 'flex'; body.style.flexDirection = 'column';
-    body.innerHTML = '<div class="flappy-wrap" id="fb-wrap"><canvas id="fb-canvas"></canvas><div class="flappy-overlay" id="fb-overlay"><div class="flappy-start-text">Press any button to start</div><div class="best-score" style="margin-top:10px">Best: <span id="fb-best-d">' + fbBest + '</span></div></div></div></div>';
+    body.innerHTML = '<div class="flappy-wrap" id="fb-wrap"><canvas id="fb-canvas"></canvas><div class="flappy-overlay" id="fb-overlay"><div class="flappy-start-text">Press any button to start</div><div class="best-score" style="margin-top:10px">Best: <span id="fb-best-d">' + fbBest + '</span></div></div></div>';
     fbCanvas = document.getElementById('fb-canvas'); var wrap = document.getElementById('fb-wrap');
     fbCanvas.width = wrap.clientWidth; fbCanvas.height = wrap.clientHeight; fbCtx = fbCanvas.getContext('2d');
     fbBird = { x: 70, y: fbCanvas.height / 2, vel: 0, r: 11 }; fbPipes = []; fbPipeTimer = 0; fbScore = 0; drawFlappy();

@@ -8,6 +8,7 @@ const int LED2 = 26;
 const int BUTTON1 = 18;
 const int BUTTON2 = 19;
 const int POT = 34;
+const int POT2 = 33;
 
 const char* AP_SSID = "ArduinoPicnic";
 const char* AP_PASS = "picnic123";
@@ -26,11 +27,11 @@ String getContentType(String path) {
   if (path.endsWith(".html")) return "text/html";
   if (path.endsWith(".css"))  return "text/css";
   if (path.endsWith(".js"))   return "application/javascript";
+  if (path.endsWith(".woff2"))return "font/woff2";
   if (path.endsWith(".png"))  return "image/png";
   if (path.endsWith(".jpg"))  return "image/jpeg";
   if (path.endsWith(".ico"))  return "image/x-icon";
   if (path.endsWith(".svg"))  return "image/svg+xml";
-  if (path.endsWith(".json")) return "application/json";
   return "text/plain";
 }
 
@@ -106,13 +107,19 @@ void loop() {
   server.handleClient();
 
   int potValue = analogRead(POT);
+  int pot2Value = analogRead(POT2);
   int brightness = map(potValue, 0, 4095, 20, 255);
 
-  if (millis() - lastHeartbeat >= 500) {
+  if (millis() - lastHeartbeat >= 150) {
     lastHeartbeat = millis();
-    String msg = "POT:" + String(potValue);
-    Serial.println(msg);
-    if (wsClientConnected) ws.broadcastTXT(msg + "\n");
+    String msg1 = "POT:" + String(potValue);
+    String msg2 = "POT2:" + String(pot2Value);
+    Serial.println(msg1);
+    Serial.println(msg2);
+    if (wsClientConnected) {
+      ws.broadcastTXT(msg1 + "\n");
+      ws.broadcastTXT(msg2 + "\n");
+    }
   }
 
   if (!gameMode) {

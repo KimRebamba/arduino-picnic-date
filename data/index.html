@@ -15,13 +15,6 @@
   <div class="deco deco-4"></div>
 
   <aside id="sidebar">
-    <!-- <div class="sidebar-header">
-      <div class="sidebar-logo">
-        <svg class="icon" viewBox="0 0 20 20"><path d="M10 1C7 6 4 8.5 4 12a6 6 0 0012 0c0-3.5-3-6-6-11z"/></svg>
-      </div>
-      <div class="sidebar-title">Arduino Picnic Project</div>
-      <div class="sidebar-sub">by kim</div>
-    </div> -->
     <nav class="sidebar-nav">
       <div class="sidebar-item" id="sb-status" onclick="openStatus()">
         <div class="sidebar-icon" style="background:var(--accent-coral)">
@@ -47,6 +40,12 @@
         </div>
         <div class="sidebar-label">Tug War</div>
       </div>
+      <div class="sidebar-item" id="sb-archery" onclick="openArchery()">
+        <div class="sidebar-icon" style="background:#C9A97A">
+          <svg class="icon" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="10" cy="10" r="2" fill="currentColor"/><line x1="10" y1="1" x2="10" y2="5" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="15" y1="10" x2="19" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="15" x2="10" y2="19" stroke="currentColor" stroke-width="1.5"/></svg>
+        </div>
+        <div class="sidebar-label">Archery</div>
+      </div>
       <div class="sidebar-item" id="sb-flappy" onclick="openFlappy()">
         <div class="sidebar-icon" style="background:var(--accent-teal)">
           <svg class="icon" viewBox="0 0 20 20"><path d="M4 13c0-3.5 2.5-6 5.5-6 1.2 0 2.2.4 2.8 1.2L15 6l1 2.5c1.8 1 3 3 3 5 0 2.8-2.2 4.5-5 4.5H7.5c-3 0-5.5-2-5.5-4.5 0-1.2.7-2 2-2.5z"/><circle cx="8.5" cy="11" r="0.9" fill="#FFFAF5"/></svg>
@@ -54,11 +53,6 @@
         <div class="sidebar-label">Flappy</div>
       </div>
     </nav>
-    <!-- <div class="sidebar-bottom">
-      Keyboard<br>
-      <kbd>Space</kbd> Btn 1<br>
-      <kbd>Enter</kbd> Btn 2
-    </div> -->
   </aside>
 
   <main id="windows-area">
