@@ -199,7 +199,7 @@ function updateStatusUI() {
 }
 
 // ========== REACTION ==========
-var rxState = 'idle', rxMode = '1p', rxTimeouts = [], rxStart = 0, rxBest = Infinity, rxWins = [0, 0];
+var rxState = 'idle', rxMode = '1p', rxTimeouts = [], rxStart = 0, rxBest = Infinity, rxWins = [0, 0], rxHasPlayed = false;
 
 function openReaction() {
   closeOtherGames('reaction'); activeGameId = 'reaction';
@@ -214,22 +214,22 @@ function rxSetMode(m) { if (rxState !== 'idle') return; rxMode = m; rxBuildUI();
 function rxBuildUI(body) {
   if (!body) body = document.getElementById('body-reaction'); if (!body) return;
   var md = rxState !== 'idle' ? ' disabled' : '';
+  var promptText = rxHasPlayed ? 'Press any button to restart' : 'Press any button to start';
   var h = '<div class="mode-toggle"><span class="mode-opt' + (rxMode === '1p' ? ' active' : '') + md + '" onclick="rxSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (rxMode === '1v1' ? ' active' : '') + md + '" onclick="rxSetMode(\'1v1\')">1v1</span></div>';
   if (rxMode === '1p') {
-    h += '<div class="reaction-display" id="rx-display"><div class="game-prompt">Test your reaction speed</div><div class="game-sub">Press Start, then press any button when the LED lights up</div></div><button class="game-btn" id="rx-btn" onclick="rxStartGame()">Start</button><div class="game-result" id="rx-result"></div><div class="best-score">Best: <span id="rx-best">' + (rxBest === Infinity ? '--' : rxBest + 'ms') + '</span></div>';
+    h += '<div class="reaction-display" id="rx-display"><div class="game-prompt">' + promptText + '</div><div class="game-sub">Then press any button when the LED lights up</div></div><div class="game-result" id="rx-result"></div><div class="best-score">Best: <span id="rx-best">' + (rxBest === Infinity ? '--' : rxBest + 'ms') + '</span></div>';
   } else {
-    h += '<div class="reaction-display" id="rx-display"><div class="game-prompt">Who reacts faster?</div><div class="game-sub">P1: Button 1 &middot; P2: Button 2<br>Press when both LEDs light up</div></div><button class="game-btn" id="rx-btn" onclick="rxStartGame()">Start</button><div class="game-result" id="rx-result"></div><div class="wins-row"><span class="wp1">P1: ' + rxWins[0] + '</span> | <span class="wp2">P2: ' + rxWins[1] + '</span></div>';
+    h += '<div class="reaction-display" id="rx-display"><div class="game-prompt">' + promptText + '</div><div class="game-sub">P1: Button 1 &middot; P2: Button 2<br>Press when both LEDs light up</div></div><div class="game-result" id="rx-result"></div><div class="wins-row"><span class="wp1">P1: ' + rxWins[0] + '</span> | <span class="wp2">P2: ' + rxWins[1] + '</span></div>';
   }
   body.innerHTML = h;
 }
 
 function rxStartGame() {
   if (rxState !== 'idle') return;
-  rxState = 'waiting'; sendCmd('MODE:GAME'); sendCmd('LED1:OFF'); sendCmd('LED2:OFF');
+  rxHasPlayed = true; rxState = 'waiting'; sendCmd('MODE:GAME'); sendCmd('LED1:OFF'); sendCmd('LED2:OFF');
   var d = document.getElementById('rx-display');
   if (rxMode === '1p') { d.className = 'reaction-display waiting'; d.innerHTML = '<div class="game-prompt" style="color:var(--accent-yellow)">Wait for it...</div>'; }
   else { d.className = 'reaction-display waiting'; d.innerHTML = '<div class="vs-row"><div class="vs-player p1"><div class="vs-label">Player 1</div><div class="vs-value" id="rx-p1v">--</div></div><div class="vs-divider">VS</div><div class="vs-player p2"><div class="vs-label">Player 2</div><div class="vs-value" id="rx-p2v">--</div></div></div><div class="game-prompt" style="color:var(--accent-yellow);margin-top:6px">Wait for it...</div>'; }
-  var btn = document.getElementById('rx-btn'); if (btn) btn.disabled = true;
   var res = document.getElementById('rx-result'); if (res) res.textContent = '';
   var t = setTimeout(function () {
     if (rxState !== 'waiting') return;
@@ -243,34 +243,32 @@ function rxStartGame() {
 }
 
 function rxPress(player) {
+  if (rxState === 'idle') { rxStartGame(); return; }
+  if (rxState === 'dead') { rxResetToIdle(); return; }
   if (rxMode === '1p') {
     if (rxState === 'waiting') {
       for (var i = 0; i < rxTimeouts.length; i++) clearTimeout(rxTimeouts[i]); rxTimeouts = [];
-      rxState = 'too-early'; sendCmd('LED1:OFF'); sendCmd('MODE:CANDLE');
+      rxState = 'dead'; sendCmd('LED1:OFF'); sendCmd('MODE:CANDLE');
       var d = document.getElementById('rx-display'); d.className = 'reaction-display too-early'; d.innerHTML = '<div class="game-prompt" style="color:var(--accent-coral)">Too early!</div>';
       document.getElementById('rx-result').innerHTML = '<span style="color:var(--accent-coral)">Wait for the light</span>';
-      rxTimeouts.push(addTimeout(rxReset, 2000));
     } else if (rxState === 'ready') {
       var ms = Math.round(performance.now() - rxStart);
-      rxState = 'result'; sendCmd('LED1:OFF'); sendCmd('MODE:CANDLE');
+      rxState = 'dead'; sendCmd('LED1:OFF'); sendCmd('MODE:CANDLE');
       if (ms < rxBest) rxBest = ms;
       var be = document.getElementById('rx-best'); if (be) be.textContent = rxBest + 'ms';
       var d = document.getElementById('rx-display'); d.className = 'reaction-display'; d.innerHTML = '<div class="game-prompt" style="color:var(--accent-green)">' + ms + 'ms</div>';
       document.getElementById('rx-result').innerHTML = '<span style="color:var(--accent-green)">Great reaction!</span>';
-      rxTimeouts.push(addTimeout(rxReset, 2500));
     }
   } else {
     if (rxState === 'waiting') {
       var winner = player === 1 ? 2 : 1;
-      rxState = 'result'; sendCmd('LED1:OFF'); sendCmd('LED2:OFF'); sendCmd('MODE:CANDLE');
+      rxState = 'dead'; sendCmd('LED1:OFF'); sendCmd('LED2:OFF'); sendCmd('MODE:CANDLE');
       rxWins[winner - 1]++; rxShow1v1(winner, pN(player) + ' pressed too early');
-      rxTimeouts.push(addTimeout(rxReset, 3000));
     } else if (rxState === 'ready') {
       var ms = Math.round(performance.now() - rxStart);
-      rxState = 'result'; sendCmd('LED1:OFF'); sendCmd('LED2:OFF'); sendCmd('MODE:CANDLE');
+      rxState = 'dead'; sendCmd('LED1:OFF'); sendCmd('LED2:OFF'); sendCmd('MODE:CANDLE');
       sendCmd('LED' + player + ':ON'); rxTimeouts.push(addTimeout(function () { sendCmd('LED' + player + ':OFF'); }, 400));
       rxWins[player - 1]++; rxShow1v1(player, ms + 'ms');
-      rxTimeouts.push(addTimeout(rxReset, 3000));
     }
   }
 }
@@ -286,11 +284,11 @@ function rxShow1v1(winner, detail) {
 }
 
 function rxBuildWR() { var e = document.querySelector('#body-reaction .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + rxWins[0] + '</span> | <span class="wp2">P2: ' + rxWins[1] + '</span>'; }
-function rxReset() { rxState = 'idle'; for (var i = 0; i < rxTimeouts.length; i++) clearTimeout(rxTimeouts[i]); rxTimeouts = []; rxBuildUI(); }
+function rxResetToIdle() { rxState = 'idle'; for (var i = 0; i < rxTimeouts.length; i++) clearTimeout(rxTimeouts[i]); rxTimeouts = []; rxBuildUI(); }
 function destroyReaction() { rxState = 'idle'; for (var i = 0; i < rxTimeouts.length; i++) clearTimeout(rxTimeouts[i]); rxTimeouts = []; }
 
 // ========== MASH ==========
-var msState = 'idle', msMode = '1p', msCount = 0, msCount1 = 0, msCount2 = 0, msTimeLeft = 0, msInterval = null, msBest = 0, msWins = [0, 0];
+var msState = 'idle', msMode = '1p', msCount = 0, msCount1 = 0, msCount2 = 0, msTimeLeft = 0, msInterval = null, msBest = 0, msWins = [0, 0], msHasPlayed = false;
 
 function openMash() {
   closeOtherGames('mash'); activeGameId = 'mash';
@@ -305,23 +303,26 @@ function msSetMode(m) { if (msState !== 'idle') return; msMode = m; msBuildUI();
 function msBuildUI(body) {
   if (!body) body = document.getElementById('body-mash'); if (!body) return;
   var md = msState !== 'idle' ? ' disabled' : '';
+  var promptText = msHasPlayed ? 'Press any button to restart' : 'Press any button to start';
   var h = '<div class="mode-toggle"><span class="mode-opt' + (msMode === '1p' ? ' active' : '') + md + '" onclick="msSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (msMode === '1v1' ? ' active' : '') + md + '" onclick="msSetMode(\'1v1\')">1v1</span></div>';
   if (msMode === '1p') {
-    h += '<div class="mash-display"><div class="mash-count" id="ms-count">0</div><div class="mash-timer" id="ms-timer">Time: <span>10</span>s</div><div class="mash-rate" id="ms-rate"></div></div><div class="mash-bar-track"><div class="mash-bar-fill" id="ms-bar"></div></div><button class="game-btn" id="ms-btn" onclick="msStartGame()">Start</button><div class="best-score">Best: <span id="ms-best">' + (msBest || '--') + '</span> presses</div>';
+    h += '<div class="mash-display"><div class="mash-count" id="ms-count">0</div><div class="mash-timer" id="ms-timer">Time: <span>10</span>s</div><div class="mash-rate" id="ms-rate"></div></div><div class="mash-bar-track"><div class="mash-bar-fill" id="ms-bar"></div></div><div class="game-result" id="ms-result">' + promptText + '</div><div class="best-score">Best: <span id="ms-best">' + (msBest || '--') + '</span> presses</div>';
   } else {
-    h += '<div class="vs-row"><div class="vs-player p1"><div class="vs-label">Player 1</div><div class="vs-value" id="ms-c1">0</div></div><div class="vs-divider"><div style="font-size:11px">Time</div><div style="font-size:18px;color:var(--accent-coral)" id="ms-vt">10</div></div><div class="vs-player p2"><div class="vs-label">Player 2</div><div class="vs-value" id="ms-c2">0</div></div></div><div class="mash-vs-bars"><div class="mash-bar-row p1"><div class="bl">P1</div><div class="bt"><div class="bf" id="ms-b1"></div></div></div><div class="mash-bar-row p2"><div class="bl">P2</div><div class="bt"><div class="bf" id="ms-b2"></div></div></div></div><button class="game-btn" id="ms-btn" onclick="msStartGame()">Start</button><div class="game-result" id="ms-result"></div><div class="wins-row"><span class="wp1">P1: ' + msWins[0] + '</span> | <span class="wp2">P2: ' + msWins[1] + '</span></div>';
+    h += '<div class="vs-row"><div class="vs-player p1"><div class="vs-label">Player 1</div><div class="vs-value" id="ms-c1">0</div></div><div class="vs-divider"><div style="font-size:11px">Time</div><div style="font-size:18px;color:var(--accent-coral)" id="ms-vt">10</div></div><div class="vs-player p2"><div class="vs-label">Player 2</div><div class="vs-value" id="ms-c2">0</div></div></div><div class="mash-vs-bars"><div class="mash-bar-row p1"><div class="bl">P1</div><div class="bt"><div class="bf" id="ms-b1"></div></div></div><div class="mash-bar-row p2"><div class="bl">P2</div><div class="bt"><div class="bf" id="ms-b2"></div></div></div></div><div class="game-result" id="ms-result">' + promptText + '</div><div class="wins-row"><span class="wp1">P1: ' + msWins[0] + '</span> | <span class="wp2">P2: ' + msWins[1] + '</span></div>';
   }
   body.innerHTML = h;
 }
 
 function msStartGame() {
   if (msState !== 'idle') return;
+  msHasPlayed = true;
   msCount = 0; msCount1 = 0; msCount2 = 0; msTimeLeft = 10; msState = 'playing'; sendCmd('MODE:GAME');
   if (msMode === '1p') {
     var el = document.getElementById('ms-count'); if (el) el.textContent = '0';
     var tl = document.getElementById('ms-timer'); if (tl) tl.innerHTML = 'Time: <span>10</span>s';
     var rt = document.getElementById('ms-rate'); if (rt) rt.textContent = '';
     var br = document.getElementById('ms-bar'); if (br) br.style.width = '0%';
+    var res = document.getElementById('ms-result'); if (res) res.textContent = '';
   } else {
     var c1 = document.getElementById('ms-c1'); if (c1) c1.textContent = '0';
     var c2 = document.getElementById('ms-c2'); if (c2) c2.textContent = '0';
@@ -330,7 +331,6 @@ function msStartGame() {
     var b2 = document.getElementById('ms-b2'); if (b2) b2.style.width = '0%';
     var res = document.getElementById('ms-result'); if (res) res.textContent = '';
   }
-  var btn = document.getElementById('ms-btn'); if (btn) btn.disabled = true;
   msInterval = setInterval(function () {
     msTimeLeft--;
     if (msMode === '1p') {
@@ -340,11 +340,11 @@ function msStartGame() {
       var vt = document.getElementById('ms-vt'); if (vt) vt.textContent = msTimeLeft;
     }
     if (msTimeLeft <= 0) {
-      clearInterval(msInterval); msInterval = null; msState = 'result'; sendCmd('MODE:CANDLE');
+      clearInterval(msInterval); msInterval = null; msState = 'dead'; sendCmd('MODE:CANDLE');
       if (msMode === '1p') {
         if (msCount > msBest) msBest = msCount;
         var be = document.getElementById('ms-best'); if (be) be.textContent = msBest;
-        addTimeout(msReset, 3000);
+        var res = document.getElementById('ms-result'); if (res) res.innerHTML = '<span style="color:var(--accent-green)">Time\'s up! ' + msCount + ' presses</span>';
       } else {
         var w = 0; if (msCount1 > msCount2) w = 1; else if (msCount2 > msCount1) w = 2;
         if (w) msWins[w - 1]++;
@@ -353,13 +353,15 @@ function msStartGame() {
           if (w) res.innerHTML = '<div class="winner-banner ' + pCl(w) + '">' + pN(w) + ' Wins! (' + msCount1 + ' vs ' + msCount2 + ')</div>';
           else res.innerHTML = '<div class="winner-banner tie">Tie! (' + msCount1 + ' vs ' + msCount2 + ')</div>';
         }
-        msBuildWR(); addTimeout(msReset, 3000);
+        msBuildWR();
       }
     }
   }, 1000);
 }
 
 function msPress(player) {
+  if (msState === 'idle') { msStartGame(); return; }
+  if (msState === 'dead') { msResetToIdle(); return; }
   if (msState !== 'playing') return;
   if (msMode === '1p') {
     msCount++;
@@ -383,11 +385,11 @@ function msPress(player) {
 }
 
 function msBuildWR() { var e = document.querySelector('#body-mash .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + msWins[0] + '</span> | <span class="wp2">P2: ' + msWins[1] + '</span>'; }
-function msReset() { msState = 'idle'; msBuildUI(); }
+function msResetToIdle() { if (msInterval) { clearInterval(msInterval); msInterval = null; } msState = 'idle'; sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); msBuildUI(); }
 function destroyMash() { if (msInterval) { clearInterval(msInterval); msInterval = null; } msState = 'idle'; }
 
 // ========== TUG OF WAR ==========
-var twState = 'idle', twMode = '1p', twPos = 50, twTimer = 15, twInterval = null, twAF = null, twDiff = 1, twCanvas, twCtx, twWins = [0, 0];
+var twState = 'idle', twMode = '1p', twPos = 50, twTimer = 15, twInterval = null, twAF = null, twDiff = 1, twCanvas, twCtx, twWins = [0, 0], twHasPlayed = false;
 
 function openTow() {
   closeOtherGames('tow'); activeGameId = 'tow';
@@ -403,9 +405,9 @@ function twSetMode(m) { if (twState !== 'idle') return; twMode = m; twBuildUI();
 function twBuildUI(body) {
   if (!body) body = document.getElementById('body-tow'); if (!body) return;
   var md = twState !== 'idle' ? ' disabled' : '';
-  var sub = twMode === '1p' ? 'Mash buttons to pull the rope to your side!' : 'P1 pulls left (Btn 1) &middot; P2 pulls right (Btn 2)';
+  var sub = twMode === '1p' ? 'Mash buttons to pull the rope to your side!' : 'P1 pulls left (Btn 1) · P2 pulls right (Btn 2)';
   var h = '<div class="mode-toggle"><span class="mode-opt' + (twMode === '1p' ? ' active' : '') + md + '" onclick="twSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (twMode === '1v1' ? ' active' : '') + md + '" onclick="twSetMode(\'1v1\')">1v1</span></div>';
-  h += '<div class="tow-canvas-wrap"><canvas id="tw-canvas" width="428" height="200"></canvas></div><button class="game-btn" id="tw-btn" onclick="twStartGame()">Start</button><div class="game-sub" style="margin-top:8px">' + sub + '</div>';
+  h += '<div class="tow-canvas-wrap"><canvas id="tw-canvas" width="428" height="200"></canvas></div><div class="game-sub" style="margin-top:8px">' + sub + '</div>';
   if (twMode === '1v1') h += '<div class="wins-row"><span class="wp1">P1: ' + twWins[0] + '</span> | <span class="wp2">P2: ' + twWins[1] + '</span></div>';
   body.innerHTML = h;
   twCanvas = document.getElementById('tw-canvas'); twCtx = twCanvas.getContext('2d');
@@ -414,26 +416,34 @@ function twBuildUI(body) {
 
 function twStartGame() {
   if (twState !== 'idle') return;
+  twHasPlayed = true;
   twPos = 50; twTimer = 15; twDiff = 1; twState = 'playing'; sendCmd('MODE:GAME');
-  var btn = document.getElementById('tw-btn'); if (btn) btn.disabled = true;
   twInterval = setInterval(function () {
     twTimer--;
     if (twMode === '1p') twDiff += 0.12;
     if (twTimer <= 0) {
       clearInterval(twInterval); twInterval = null;
       if (twMode === '1p') {
-        twState = 'won'; sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); drawTow(); addTimeout(twReset, 3000);
+        twState = 'won'; sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); drawTow();
       } else {
         var w = twPos < 50 ? 1 : twPos > 50 ? 2 : 0;
-        twState = w ? 'won' : 'lost';
+        twState = w ? 'won' : 'tie';
         if (w) twWins[w - 1]++;
         sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE');
         if (w) { sendCmd('LED' + w + ':ON'); addTimeout(function () { sendCmd('LED' + w + ':OFF'); }, 500); }
-        drawTow(); twBuildWR(); addTimeout(twReset, 3000);
+        drawTow(); twBuildWR();
       }
     }
   }, 1000);
   twLoop();
+}
+
+function twPress(player) {
+  if (twState === 'idle') { twStartGame(); return; }
+  if (twState === 'won' || twState === 'lost' || twState === 'tie') { twResetToIdle(); return; }
+  if (twState !== 'playing') return;
+  if (twMode === '1p') { twPos -= 3.5; if (twPos < 0) twPos = 0; }
+  else { if (player === 1) { twPos -= 3.5; if (twPos < 0) twPos = 0; } else { twPos += 3.5; if (twPos > 100) twPos = 100; } }
 }
 
 function twLoop() {
@@ -441,28 +451,22 @@ function twLoop() {
   if (twMode === '1p') twPos += twDiff * 0.25; else twPos += (50 - twPos) * 0.008;
   if (twMode === '1p' && twPos >= 100) {
     twState = 'lost'; if (twInterval) { clearInterval(twInterval); twInterval = null; }
-    sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); drawTow(); addTimeout(twReset, 3000); return;
+    sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); drawTow(); return;
   }
   if (twMode === '1v1') {
     if (twPos <= 0) {
       twState = 'won'; twWins[0]++; if (twInterval) { clearInterval(twInterval); twInterval = null; }
       sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); sendCmd('LED1:ON');
-      addTimeout(function () { sendCmd('LED1:OFF'); }, 500); drawTow(); twBuildWR(); addTimeout(twReset, 3000); return;
+      addTimeout(function () { sendCmd('LED1:OFF'); }, 500); drawTow(); twBuildWR(); return;
     }
     if (twPos >= 100) {
       twState = 'lost'; twWins[1]++; if (twInterval) { clearInterval(twInterval); twInterval = null; }
       sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); sendCmd('LED2:ON');
-      addTimeout(function () { sendCmd('LED2:OFF'); }, 500); drawTow(); twBuildWR(); addTimeout(twReset, 3000); return;
+      addTimeout(function () { sendCmd('LED2:OFF'); }, 500); drawTow(); twBuildWR(); return;
     }
   }
   var l1 = Math.round(vmap(twPos, 0, 100, 255, 30)), l2 = Math.round(vmap(twPos, 0, 100, 30, 255));
   sendCmd('LED1:VAL:' + l1); sendCmd('LED2:VAL:' + l2); drawTow(); twAF = requestAnimationFrame(twLoop);
-}
-
-function twPress(player) {
-  if (twState !== 'playing') return;
-  if (twMode === '1p') { twPos -= 3.5; if (twPos < 0) twPos = 0; }
-  else { if (player === 1) { twPos -= 3.5; if (twPos < 0) twPos = 0; } else { twPos += 3.5; if (twPos > 100) twPos = 100; } }
 }
 
 function drawTow() {
@@ -473,6 +477,19 @@ function drawTow() {
   var ll = twMode === '1p' ? 'YOU' : 'P1', rl = twMode === '1p' ? 'OPPONENT' : 'P2';
   c.fillStyle = '#81B29A'; c.font = 'bold 13px Quicksand'; c.textAlign = 'left'; c.fillText(ll, 12, 22);
   c.fillStyle = '#E07A5F'; c.textAlign = 'right'; c.fillText(rl, w - 12, 22);
+  if (twState === 'idle') {
+    var ry = h / 2 + 8, rx = vmap(50, 0, 100, 36, w - 36); c.lineCap = 'round'; c.lineWidth = 5;
+    c.strokeStyle = '#C9A97A'; c.beginPath(); c.moveTo(16, ry); c.lineTo(rx, ry); c.stroke();
+    c.strokeStyle = '#A68656'; c.beginPath(); c.moveTo(rx, ry); c.lineTo(w - 16, ry); c.stroke();
+    c.fillStyle = '#E07A5F'; c.beginPath(); c.arc(rx, ry, 11, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#C4593F'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#FFFAF5'; c.font = 'bold 9px Quicksand'; c.textAlign = 'center'; c.fillText('50', rx, ry + 3);
+    var promptText = twHasPlayed ? 'Press any button to restart' : 'Press any button to start';
+    c.fillStyle = 'rgba(255,250,245,0.75)'; var tw2 = c.measureText(promptText).width;
+    //c.fillRect(w / 2 - 120, h / 2 - 28, 240, 36);
+    c.fillStyle = '#3D405B'; c.font = 'bold 16px Quicksand'; c.textAlign = 'center';
+    c.fillText(promptText, w / 2, h / 2 - 4);
+    return;
+  }
   c.save(); c.strokeStyle = 'rgba(61,64,91,0.15)'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(w / 2, 32); c.lineTo(w / 2, h - 22); c.stroke(); c.restore();
   var ry = h / 2 + 8, rx = vmap(twPos, 0, 100, 36, w - 36); c.lineCap = 'round'; c.lineWidth = 5;
   c.strokeStyle = '#C9A97A'; c.beginPath(); c.moveTo(16, ry); c.lineTo(rx, ry); c.stroke();
@@ -480,18 +497,22 @@ function drawTow() {
   c.fillStyle = '#E07A5F'; c.beginPath(); c.arc(rx, ry, 11, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#C4593F'; c.lineWidth = 2; c.stroke();
   c.fillStyle = '#FFFAF5'; c.font = 'bold 9px Quicksand'; c.textAlign = 'center'; c.fillText(Math.round(twPos), rx, ry + 3);
   c.fillStyle = '#3D405B'; c.font = 'bold 16px Quicksand'; c.textAlign = 'center'; c.fillText(twTimer + 's', w / 2, h - 4);
-  if (twState === 'won' || twState === 'lost') {
+  if (twState === 'won' || twState === 'lost' || twState === 'tie') {
     c.fillStyle = 'rgba(255,250,245,0.82)'; c.fillRect(0, 0, w, h); c.textAlign = 'center';
     if (twMode === '1p') { c.fillStyle = twState === 'won' ? '#81B29A' : '#E07A5F'; c.font = 'bold 26px Quicksand'; c.fillText(twState === 'won' ? 'You Won!' : 'You Lost!', w / 2, h / 2 + 4); }
     else {
-      var msg = ''; if (twPos <= 0) { msg = 'Player 1 Wins!'; c.fillStyle = '#81B29A'; } else if (twPos >= 100) { msg = 'Player 2 Wins!'; c.fillStyle = '#E07A5F'; } else { msg = Math.abs(twPos - 50) < 2 ? 'Tie!' : (twPos < 50 ? 'Player 1 Wins!' : 'Player 2 Wins!'); c.fillStyle = twPos < 50 ? '#81B29A' : '#E07A5F'; }
-      c.font = 'bold 26px Quicksand'; c.fillText(msg, w / 2, h / 2 + 4);
+      var msg = '', clr = '#E9C46A';
+      if (twState === 'tie') { msg = 'Tie!'; }
+      else if (twPos <= 0) { msg = 'Player 1 Wins!'; clr = '#81B29A'; }
+      else if (twPos >= 100) { msg = 'Player 2 Wins!'; clr = '#E07A5F'; }
+      else { msg = twPos < 50 ? 'Player 1 Wins!' : 'Player 2 Wins!'; clr = twPos < 50 ? '#81B29A' : '#E07A5F'; }
+      c.fillStyle = clr; c.font = 'bold 26px Quicksand'; c.fillText(msg, w / 2, h / 2 + 4);
     }
   }
 }
 
 function twBuildWR() { var e = document.querySelector('#body-tow .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + twWins[0] + '</span> | <span class="wp2">P2: ' + twWins[1] + '</span>'; }
-function twReset() { twState = 'idle'; twPos = 50; twBuildUI(); }
+function twResetToIdle() { if (twInterval) { clearInterval(twInterval); twInterval = null; } if (twAF) { cancelAnimationFrame(twAF); twAF = null; } twState = 'idle'; twPos = 50; sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); twBuildUI(); }
 function destroyTow() { if (twInterval) { clearInterval(twInterval); twInterval = null; } if (twAF) { cancelAnimationFrame(twAF); twAF = null; } twState = 'idle'; }
 
 // ========== ARCHERY ==========
@@ -499,9 +520,7 @@ var awState = 'idle', awP1Angle = 0, awP2Angle = 0;
 var awP1Arrow = null, awP2Arrow = null;
 var awP1Cooldown = 0, awP2Cooldown = 0;
 var awWinner = 0, awAF = null, awCanvas, awCtx;
-var awWins = [0, 0];
-
-//tweak 
+var awWins = [0, 0], awHasPlayed = false;
 var AW_SPEED = 10.2, AW_GRAV = 0.42, AW_GRAV_VAR = 0.135, AW_HIT_R = 36;
 
 function openArchery() {
@@ -516,8 +535,7 @@ function openArchery() {
 function awBuildUI(body) {
   if (!body) body = document.getElementById('body-archery'); if (!body) return;
   var h = '<div class="archery-canvas-wrap"><canvas id="aw-canvas" width="520" height="350"></canvas></div>';
-  h += '<button class="game-btn" id="aw-btn" onclick="awStartGame()">Start</button>';
-  h += '<div class="game-sub" style="margin-top:6px">P1: Pot1 aim, Btn1 shoot &middot; P2: Pot2 aim, Btn2 shoot<br>Arc it to hit the other!</div>';
+  h += '<div class="game-sub" style="margin-top:6px">P1: Pot1 aim, Btn1 shoot · P2: Pot2 aim, Btn2 shoot<br>Arc it to hit the other!</div>';
   h += '<div class="wins-row"><span class="wp1">P1: ' + awWins[0] + '</span> | <span class="wp2">P2: ' + awWins[1] + '</span></div>';
   body.innerHTML = h;
   awCanvas = document.getElementById('aw-canvas'); awCtx = awCanvas.getContext('2d');
@@ -528,14 +546,16 @@ function awBuildUI(body) {
 
 function awStartGame() {
   if (awState !== 'idle') return;
+  awHasPlayed = true;
   awState = 'playing'; awP1Arrow = null; awP2Arrow = null;
   awP1Cooldown = 0; awP2Cooldown = 0; awWinner = 0;
   sendCmd('MODE:GAME');
-  var btn = document.getElementById('aw-btn'); if (btn) btn.disabled = true;
   awLoop();
 }
 
 function awShoot(player) {
+  if (awState === 'idle') { awStartGame(); return; }
+  if (awState === 'won') { awResetToIdle(); return; }
   if (awState !== 'playing') return;
   if (player === 1 && (awP1Cooldown > 0 || awP1Arrow)) return;
   if (player === 2 && (awP2Cooldown > 0 || awP2Arrow)) return;
@@ -590,7 +610,7 @@ function awLoop() {
       }
     }
   }
-  if (awState === 'won') { drawArchery(); addTimeout(awReset, 3500); return; }
+  if (awState === 'won') { drawArchery(); return; }
   drawArchery(); awAF = requestAnimationFrame(awLoop);
 }
 
@@ -603,10 +623,11 @@ function drawArchery() {
   c.fillStyle = '#81B29A'; c.fillRect(0, groundY, w, h - groundY);
   c.fillStyle = '#6A9B83'; c.fillRect(0, groundY, w, 3);
   for (var i = 0; i < 8; i++) {
-    c.strokeStyle = 'rgba(106,155,131,0.4)'; c.lineWidth =
-    2; c.beginPath(); c.moveTo(i * 70 + 10, groundY); c.quadraticCurveTo(i * 70 + 35, groundY - 8, i * 70 + 60, groundY); c.stroke();
+    c.strokeStyle = 'rgba(106,155,131,0.4)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(i * 70 + 10, groundY);
+    c.quadraticCurveTo(i * 70 + 35, groundY - 8, i * 70 + 60, groundY);
+    c.stroke();
   }
-  // draw faint target zones to help judge aim/hits
   c.save();
   c.fillStyle = 'rgba(196,89,63,0.06)';
   c.beginPath(); c.arc(450, 278, AW_HIT_R, 0, Math.PI * 2); c.fill();
@@ -620,6 +641,14 @@ function drawArchery() {
   c.fillStyle = '#3D405B'; c.font = 'bold 14px Quicksand'; c.textAlign = 'center';
   c.fillText('P1', 70, groundY + 25);
   c.fillText('P2', 450, groundY + 25);
+  if (awState === 'idle') {
+    var promptText = awHasPlayed ? 'Press any button to restart' : 'Press any button to start';
+    c.fillStyle = 'rgba(255,250,245,0.8)';
+    var tw2 = c.measureText(promptText).width;
+    c.fillRect(w / 2 - tw2 / 2 - 16, h / 2 - 20, tw2 + 32, 32);
+    c.fillStyle = '#3D405B'; c.font = 'bold 16px Quicksand'; c.textAlign = 'center';
+    c.fillText(promptText, w / 2, h / 2);
+  }
   if (awState === 'won') {
     c.fillStyle = 'rgba(255,250,245,0.82)'; c.fillRect(0, 0, w, h);
     c.fillStyle = awWinner === 1 ? '#81B29A' : '#E07A5F';
@@ -645,7 +674,7 @@ function awDrawStickman(c, px, gy, angle, dir, busy) {
   c.strokeStyle = '#3D405B'; c.lineWidth = 1.2;
   c.beginPath(); c.moveTo(bX, stY1); c.lineTo(bX, stY2); c.stroke();
   if (!busy) {
-    c.save(); c.translate(bX, bY);     c.rotate(dir * -angle);
+    c.save(); c.translate(bX, bY); c.rotate(dir * -angle);
     c.strokeStyle = '#C4593F'; c.lineWidth = 2.5;
     c.beginPath(); c.moveTo(0, 0); c.lineTo(25 * dir, 0); c.stroke();
     c.fillStyle = '#C4593F';
@@ -667,8 +696,8 @@ function awDrawArrow(c, arrow) {
   c.restore();
 }
 
-function awBuildWR() { var e = document.querySelector('#body-archery .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + awWins[0] + '</span> | <span class="wp2">P2: ' + awWins[1] + '</span></span>'; }
-function awReset() { awState = 'idle'; awWinner = 0; awP1Arrow = null; awP2Arrow = null; awP1Cooldown = 0; awP2Cooldown = 0; awAF = null; awBuildUI(); }
+function awBuildWR() { var e = document.querySelector('#body-archery .wins-row'); if (e) e.innerHTML = '<span class="wp1">P1: ' + awWins[0] + '</span> | <span class="wp2">P2: ' + awWins[1] + '</span>'; }
+function awResetToIdle() { if (awAF) { cancelAnimationFrame(awAF); awAF = null; } awState = 'idle'; awWinner = 0; awP1Arrow = null; awP2Arrow = null; awP1Cooldown = 0; awP2Cooldown = 0; sendCmd('LED:BOTH:OFF'); sendCmd('MODE:CANDLE'); awBuildUI(); }
 function destroyArchery() { if (awAF) { cancelAnimationFrame(awAF); awAF = null; } awState = 'idle'; awWinner = 0; awP1Arrow = null; awP2Arrow = null; awP1Cooldown = 0; awP2Cooldown = 0; }
 
 // ========== FLAPPY ==========
