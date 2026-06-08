@@ -290,6 +290,11 @@ function destroyReaction() { rxState = 'idle'; for (var i = 0; i < rxTimeouts.le
 // ========== MASH ==========
 var msState = 'idle', msMode = '1p', msCount = 0, msCount1 = 0, msCount2 = 0, msTimeLeft = 0, msInterval = null, msBest = 0, msWins = [0, 0], msHasPlayed = false;
 
+function msHandleClick() {
+  if (msState === 'idle') msStartGame();
+  else if (msState === 'dead') msResetToIdle();
+}
+
 function openMash() {
   closeOtherGames('mash'); activeGameId = 'mash';
   openWindow('mash', 'Button Mash', 440, 430, function (body) {
@@ -303,12 +308,12 @@ function msSetMode(m) { if (msState !== 'idle') return; msMode = m; msBuildUI();
 function msBuildUI(body) {
   if (!body) body = document.getElementById('body-mash'); if (!body) return;
   var md = msState !== 'idle' ? ' disabled' : '';
-  var promptText = msHasPlayed ? 'Press any button to restart' : 'Press any button to start';
-  var h = '<div class="mode-toggle"><span class="mode-opt' + (msMode === '1p' ? ' active' : '') + md + '" onclick="msSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (msMode === '1v1' ? ' active' : '') + md + '" onclick="msSetMode(\'1v1\')">1v1</span></div>';
+  var promptText = msHasPlayed ? 'Click to restart' : 'Click to start';
+  var h = '<div class="mode-toggle"><span class="mode-opt' + (msMode === '1p' ? ' active' : '') + md + '" onclick="event.stopPropagation();msSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (msMode === '1v1' ? ' active' : '') + md + '" onclick="event.stopPropagation();msSetMode(\'1v1\')">1v1</span></div>';
   if (msMode === '1p') {
-    h += '<div class="mash-display"><div class="mash-count" id="ms-count">0</div><div class="mash-timer" id="ms-timer">Time: <span>10</span>s</div><div class="mash-rate" id="ms-rate"></div></div><div class="mash-bar-track"><div class="mash-bar-fill" id="ms-bar"></div></div><div class="game-result" id="ms-result">' + promptText + '</div><div class="best-score">Best: <span id="ms-best">' + (msBest || '--') + '</span> presses</div>';
+    h += '<div class="mash-display"><div class="mash-count" id="ms-count">0</div><div class="mash-timer" id="ms-timer">Time: <span>10</span>s</div><div class="mash-rate" id="ms-rate"></div></div><div class="mash-bar-track"><div class="mash-bar-fill" id="ms-bar"></div></div><div class="game-result" id="ms-result" style="cursor:pointer" onclick="msHandleClick()">' + promptText + '</div><div class="best-score">Best: <span id="ms-best">' + (msBest || '--') + '</span> presses</div>';
   } else {
-    h += '<div class="vs-row"><div class="vs-player p1"><div class="vs-label">Player 1</div><div class="vs-value" id="ms-c1">0</div></div><div class="vs-divider"><div style="font-size:11px">Time</div><div style="font-size:18px;color:var(--accent-coral)" id="ms-vt">10</div></div><div class="vs-player p2"><div class="vs-label">Player 2</div><div class="vs-value" id="ms-c2">0</div></div></div><div class="mash-vs-bars"><div class="mash-bar-row p1"><div class="bl">P1</div><div class="bt"><div class="bf" id="ms-b1"></div></div></div><div class="mash-bar-row p2"><div class="bl">P2</div><div class="bt"><div class="bf" id="ms-b2"></div></div></div></div><div class="game-result" id="ms-result">' + promptText + '</div><div class="wins-row"><span class="wp1">P1: ' + msWins[0] + '</span> | <span class="wp2">P2: ' + msWins[1] + '</span></div>';
+    h += '<div class="vs-row"><div class="vs-player p1"><div class="vs-label">Player 1</div><div class="vs-value" id="ms-c1">0</div></div><div class="vs-divider"><div style="font-size:11px">Time</div><div style="font-size:18px;color:var(--accent-coral)" id="ms-vt">10</div></div><div class="vs-player p2"><div class="vs-label">Player 2</div><div class="vs-value" id="ms-c2">0</div></div></div><div class="mash-vs-bars"><div class="mash-bar-row p1"><div class="bl">P1</div><div class="bt"><div class="bf" id="ms-b1"></div></div></div><div class="mash-bar-row p2"><div class="bl">P2</div><div class="bt"><div class="bf" id="ms-b2"></div></div></div></div><div class="game-result" id="ms-result" style="cursor:pointer" onclick="msHandleClick()">' + promptText + '</div><div class="wins-row"><span class="wp1">P1: ' + msWins[0] + '</span> | <span class="wp2">P2: ' + msWins[1] + '</span></div>';
   }
   body.innerHTML = h;
 }
@@ -391,6 +396,11 @@ function destroyMash() { if (msInterval) { clearInterval(msInterval); msInterval
 // ========== TUG OF WAR ==========
 var twState = 'idle', twMode = '1p', twPos = 50, twTimer = 15, twInterval = null, twAF = null, twDiff = 1, twCanvas, twCtx, twWins = [0, 0], twHasPlayed = false;
 
+function twHandleClick() {
+  if (twState === 'idle') twStartGame();
+  else if (twState === 'won' || twState === 'lost' || twState === 'tie') twResetToIdle();
+}
+
 function openTow() {
   closeOtherGames('tow'); activeGameId = 'tow';
   openWindow('tow', 'Tug of War', 460, 400, function (body) {
@@ -406,8 +416,14 @@ function twBuildUI(body) {
   if (!body) body = document.getElementById('body-tow'); if (!body) return;
   var md = twState !== 'idle' ? ' disabled' : '';
   var sub = twMode === '1p' ? 'Mash buttons to pull the rope to your side!' : 'P1 pulls left (Btn 1) · P2 pulls right (Btn 2)';
-  var h = '<div class="mode-toggle"><span class="mode-opt' + (twMode === '1p' ? ' active' : '') + md + '" onclick="twSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (twMode === '1v1' ? ' active' : '') + md + '" onclick="twSetMode(\'1v1\')">1v1</span></div>';
-  h += '<div class="tow-canvas-wrap"><canvas id="tw-canvas" width="428" height="200"></canvas></div><div class="game-sub" style="margin-top:8px">' + sub + '</div>';
+  var twPrompt = twHasPlayed ? 'Click to restart' : 'Click to start';
+  var showOverlay = (twState === 'idle' || twState === 'won' || twState === 'lost' || twState === 'tie');
+  var h = '<div class="mode-toggle"><span class="mode-opt' + (twMode === '1p' ? ' active' : '') + md + '" onclick="event.stopPropagation();twSetMode(\'1p\')">1 Player</span><span class="mode-opt' + (twMode === '1v1' ? ' active' : '') + md + '" onclick="event.stopPropagation();twSetMode(\'1v1\')">1v1</span></div>';
+  h += '<div class="tow-canvas-wrap" style="position:relative;cursor:' + (showOverlay ? 'pointer' : 'default') + '" onclick="twHandleClick()"><canvas id="tw-canvas" width="428" height="200"></canvas>';
+  if (showOverlay) {
+    h += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><div style="background:rgba(255,250,245,0.85);padding:6px 18px;border-radius:8px;color:#3D405B;font:bold 16px Quicksand">' + twPrompt + '</div></div>';
+  }
+  h += '</div><div class="game-sub" style="margin-top:8px">' + sub + '</div>';
   if (twMode === '1v1') h += '<div class="wins-row"><span class="wp1">P1: ' + twWins[0] + '</span> | <span class="wp2">P2: ' + twWins[1] + '</span></div>';
   body.innerHTML = h;
   twCanvas = document.getElementById('tw-canvas'); twCtx = twCanvas.getContext('2d');
@@ -418,6 +434,8 @@ function twStartGame() {
   if (twState !== 'idle') return;
   twHasPlayed = true;
   twPos = 50; twTimer = 15; twDiff = 1; twState = 'playing'; sendCmd('MODE:GAME');
+  var wrap = document.querySelector('.tow-canvas-wrap'); if (wrap) wrap.style.cursor = 'default';
+  var ov = document.querySelector('.tow-canvas-wrap > div:last-child'); if (ov && ov.style.position === 'absolute') ov.style.display = 'none';
   twInterval = setInterval(function () {
     twTimer--;
     if (twMode === '1p') twDiff += 0.12;
@@ -483,11 +501,6 @@ function drawTow() {
     c.strokeStyle = '#A68656'; c.beginPath(); c.moveTo(rx, ry); c.lineTo(w - 16, ry); c.stroke();
     c.fillStyle = '#E07A5F'; c.beginPath(); c.arc(rx, ry, 11, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#C4593F'; c.lineWidth = 2; c.stroke();
     c.fillStyle = '#FFFAF5'; c.font = 'bold 9px Quicksand'; c.textAlign = 'center'; c.fillText('50', rx, ry + 3);
-    var promptText = twHasPlayed ? 'Press any button to restart' : 'Press any button to start';
-    c.fillStyle = 'rgba(255,250,245,0.75)'; var tw2 = c.measureText(promptText).width;
-    //c.fillRect(w / 2 - 120, h / 2 - 28, 240, 36);
-    c.fillStyle = '#3D405B'; c.font = 'bold 16px Quicksand'; c.textAlign = 'center';
-    c.fillText(promptText, w / 2, h / 2 - 4);
     return;
   }
   c.save(); c.strokeStyle = 'rgba(61,64,91,0.15)'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(w / 2, 32); c.lineTo(w / 2, h - 22); c.stroke(); c.restore();
