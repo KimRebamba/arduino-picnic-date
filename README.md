@@ -1,6 +1,6 @@
 # 📟 Arduino Picnic Project by Kim
 
-A fully offline, interactive ESP32 project designed like a picnic date. It features LED candles, a web interface, and 5 mini-games you can play with buttons. Try the website: [https://kimrebamba.github.io/Arduino-Picnic-Date/].
+A fully offline, interactive ESP32 project designed like a picnic date. It features LED candles, a web interface, and 5 mini-games you can play with buttons. Try the website: [https://kimrebamba.github.io/arduino-picnic-date/].
 
 ![ESP32](https://img.shields.io/badge/Board-ESP32-000000?logo=espressif)
 ![Made with Love](https://img.shields.io/badge/Made%20with-LEDs%20%26%20Code-red)
