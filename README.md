@@ -6,7 +6,7 @@ A fully offline, interactive ESP32 project designed like a picnic date. It featu
 ![Made with Love](https://img.shields.io/badge/Made%20with-LEDs%20%26%20Code-red)
 
 ![Image 1](./assets/1.jpg)
-<!-- ![Image 2](https://via.placeholder.com/800x400?text=IMAGE+2+HERE) -->
+![Image 2: Satisfied Customers](./assets/satisfied_customerslol.png)
 
 ---
 
@@ -27,8 +27,8 @@ It's a good way of surprising your loved ones by showing your nerdy skills off b
 - **Analog Brightness:** Turn the potentiometer to dim or brighten the candles.
 - **Desktop UI:** A web interface styled like a cartoon operating system (draggable windows, macOS dots, warm pastel).
 - **Dual Connection:** Connect over the ESP32's WiFi hotspot OR plug it in via USB. 
-- **6 Built-in Games:** Reaction Time, Button Mash, Tug of War, Archery and a Flappy Bird clone.
-- **1v1 Mode:** Mash, Tug of War, and Reaction all have 1v1 modes. Player 1 uses Button 1, Player 2 uses Button 2.
+- **5 Built-in Games:** Reaction Time, Button Mash, Tug of War, Archery and a Flappy Bird clone.
+- **1v1 Mode:** Mash, Tug of War, Archery and Reaction all have 1v1 modes. Player 1 uses Button 1, Player 2 uses Button 2.
 
 ![Video Demo](./assets/1.gif)
 ![Website Demo GIF](./assets/2.gif)
